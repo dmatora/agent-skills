@@ -18,4 +18,27 @@ cd ~/Developer/agent-skills
 
 The installer links `ask-codex` into `~/.local/bin` and the skill into the Antigravity and Claude skill directories. It removes links from this repository's previous `codex-sol` installation; other existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the helper also checks for the Codex binary bundled with ChatGPT.app.
 
+## Quick start
+
+List locally cached models:
+
+```bash
+ask-codex --models
+```
+
+Choose a model for future requests, then check the selection:
+
+```bash
+ask-codex --set gpt-6.1-terra
+ask-codex --current
+```
+
+From a project directory, ask Codex to review it:
+
+```bash
+ask-codex "Review this project and point out the three most important issues. Do not change files."
+```
+
+Model availability depends on your Codex account. Use a full model name from `--models` if the example model is unavailable.
+
 See the [skill documentation](skills/ask-codex/README.md) for usage and limitations.
