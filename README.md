@@ -16,7 +16,7 @@ cd ~/Developer/agent-skills
 ./install.sh
 ```
 
-The installer links `ask-codex` into `~/.local/bin` and the skill into the Antigravity and Claude skill directories. It removes links from this repository's previous `codex-sol` installation; other existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the helper also checks for the Codex binary bundled with ChatGPT.app.
+The installer links `ask-codex` into `~/.local/bin` and the skill into the Antigravity and Claude skill directories. Existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the helper also checks for the Codex binary bundled with ChatGPT.app.
 
 ## Quick start
 
