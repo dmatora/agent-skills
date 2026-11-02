@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""
+ask-codex: Model-agnostic bridge to OpenAI Codex CLI (ChatGPT.app native binary).
+Supports live model discovery from ~/.codex/models_cache.json, fuzzy model switching,
+and clean non-interactive output extraction for AI agent orchestration.
+"""
+
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+CODEX_HOME = Path(os.environ.get("CODEX_HOME", os.path.expanduser("~/.codex")))
+MODELS_CACHE_FILE = CODEX_HOME / "models_cache.json"
+ACTIVE_MODEL_FILE = CODEX_HOME / "active_partner_model"
+DEFAULT_FALLBACK_MODEL = "gpt-6.1-terra"
+
+CHATGPT_CODEX_BIN = "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex"
+
+
+def find_codex_binary() -> str:
+    if os.path.isfile(CHATGPT_CODEX_BIN) and os.access(CHATGPT_CODEX_BIN, os.X_OK):
+        return CHATGPT_CODEX_BIN
+    which_codex = shutil.which("codex")
+    if which_codex:
+        return which_codex
+    sys.stderr.write("Error: Codex CLI binary not found.\n")
+    sys.exit(1)
+
+
+def load_cached_models() -> list[dict]:
+    if not MODELS_CACHE_FILE.is_file():
+        return []
+    try:
+        with open(MODELS_CACHE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("models", []) if isinstance(data, dict) else []
+    except Exception:
+        return []
+
+
+def resolve_model_fuzzy(query: str, models: list[dict]) -> tuple[str, dict | None]:
+    q = query.strip().lower()
+    if not models:
+        return query.strip(), None
+
+    # 1. Exact slug/id match
+    for m in models:
+        slug = (m.get("slug") or m.get("id") or m.get("name") or "").strip()
+        if slug.lower() == q:
+            return slug, m
+
+    # 2. Substring match on slug or display_name (models_cache.json is ordered newest first)
+    for m in models:
+        slug = (m.get("slug") or m.get("id") or m.get("name") or "").strip()
+        disp = (m.get("display_name") or "").strip()
+        if q in slug.lower() or q in disp.lower():
+            return slug, m
+
+    return query.strip(), None
+
+
+def get_active_model(models: list[dict]) -> str:
+    # 1. Environment variable override
+    env_model = os.environ.get("ASK_CODEX_MODEL") or os.environ.get("ASK_SOL_MODEL")
+    if env_model:
+        slug, _ = resolve_model_fuzzy(env_model, models)
+        return slug
+
+    # 2. Persisted active model file
+    if ACTIVE_MODEL_FILE.is_file():
+        try:
+            saved = ACTIVE_MODEL_FILE.read_text(encoding="utf-8").strip()
+            if saved:
+                slug, _ = resolve_model_fuzzy(saved, models)
+                return slug
+        except Exception:
+            pass
+
+    # 3. Default fallback
+    slug, _ = resolve_model_fuzzy(DEFAULT_FALLBACK_MODEL, models)
+    return slug
+
+
+def print_models_list(models: list[dict], active_slug: str) -> None:
+    if not models:
+        print(f"No models found in {MODELS_CACHE_FILE}. Active model: {active_slug}")
+        return
+    print(f"Available Codex models (from {MODELS_CACHE_FILE}):\n")
+    for m in models:
+        slug = (m.get("slug") or m.get("id") or m.get("name") or "").strip()
+        desc = (m.get("description") or m.get("display_name") or "").strip()
+        marker = "* [ACTIVE]" if slug == active_slug else "          "
+        print(f"  {marker} {slug:<20} — {desc}")
+    print("\nSwitch default model: ask-codex --set <name-or-part>  (e.g., ask-codex --set terra)")
+
+
+def set_active_model(query: str, models: list[dict]) -> None:
+    slug, matched = resolve_model_fuzzy(query, models)
+    if models and matched is None:
+        sys.stderr.write(
+            f"Warning: '{query}' not found in {MODELS_CACHE_FILE}, saving literal '{slug}'.\n"
+        )
+    CODEX_HOME.mkdir(parents=True, exist_ok=True)
+    ACTIVE_MODEL_FILE.write_text(slug + "\n", encoding="utf-8")
+    desc = (matched.get("description") or matched.get("display_name") or "") if matched else ""
+    suffix = f" ({desc})" if desc else ""
+    print(f"Active Codex partner model set to: {slug}{suffix}")
+
+
+def print_help() -> None:
+    print(
+        """Usage:
+  ask-codex "Your architectural or mathematical prompt"
+  ask-codex < prompt_file.txt
+  ask-codex -m <model> "One-off prompt with another model"
+
+Model Management:
+  ask-codex --models | -l       List available models from Codex cache and show active model
+  ask-codex --current           Print currently active model slug
+  ask-codex --set <model>       Set active model (supports fuzzy matching, e.g. 'terra', 'sol', 'astra')
+"""
+    )
+
+
+def main() -> None:
+    args = sys.argv[1:]
+    models = load_cached_models()
+    active_slug = get_active_model(models)
+
+    if not args and sys.stdin.isatty():
+        print_help()
+        sys.exit(0)
+
+    if args and args[0] in ("-h", "--help"):
+        print_help()
+        sys.exit(0)
+
+    if args and args[0] in ("-l", "--models", "--list"):
+        print_models_list(models, active_slug)
+        sys.exit(0)
+
+    if args and args[0] == "--current":
+        print(active_slug)
+        sys.exit(0)
+
+    if args and args[0] == "--set":
+        if len(args) < 2:
+            sys.stderr.write("Error: --set requires a model name or substring.\n")
+            sys.exit(1)
+        set_active_model(args[1], models)
+        sys.exit(0)
+
+    # Check for one-off -m / --model flag
+    model_to_use = active_slug
+    prompt_args = args
+    if len(args) >= 2 and args[0] in ("-m", "--model"):
+        model_to_use, _ = resolve_model_fuzzy(args[1], models)
+        prompt_args = args[2:]
+
+    codex_bin = find_codex_binary()
+    fd, temp_out = tempfile.mkstemp(prefix="ask_codex_out_", suffix=".txt")
+    os.close(fd)
+
+    try:
+        cmd = [
+            codex_bin,
+            "exec",
+            "--skip-git-repo-check",
+            "--ephemeral",
+            "-s",
+            "read-only",
+            "-m",
+            model_to_use,
+            "-o",
+            temp_out,
+        ]
+        if prompt_args:
+            cmd.append(" ".join(prompt_args))
+            proc = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        else:
+            cmd.append("-")
+            proc = subprocess.run(cmd, stdin=sys.stdin, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+
+        if proc.returncode != 0:
+            sys.stderr.write(f"Codex execution failed (model={model_to_use}):\n{proc.stderr}\n")
+            sys.exit(proc.returncode)
+
+        output = Path(temp_out).read_text(encoding="utf-8")
+        sys.stdout.write(output)
+        if output and not output.endswith("\n"):
+            sys.stdout.write("\n")
+    finally:
+        if os.path.exists(temp_out):
+            os.remove(temp_out)
+
+
+if __name__ == "__main__":
+    main()
