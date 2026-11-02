@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-# Wrapper for the native OpenAI Codex CLI bundled inside macOS ChatGPT.app
-if [ -x "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex" ]; then
-    exec "/Applications/ChatGPT.app/Contents/Resources/codex-cli/CodexCLI.app/Contents/MacOS/codex" "$@"
-else
-    echo "Error: OpenAI Codex binary not found inside /Applications/ChatGPT.app." >&2
-    exit 1
-fi

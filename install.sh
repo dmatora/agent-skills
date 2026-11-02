@@ -1,52 +1,42 @@
 #!/usr/bin/env bash
-# install.sh — Symlink public agent-skills, CLI bridges, and global rules on macOS/Linux
-
+# Install links without replacing existing files or configuration.
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN_DIR="$HOME/.local/bin"
-AGY_SKILLS_DIR="$HOME/.gemini/config/skills"
-AGY_SKILLS_JSON="$HOME/.gemini/config/skills.json"
-CLAUDE_SKILLS_DIR="$HOME/.claude/skills"
+repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+skill="$repo_dir/skills/ask-codex"
 
-mkdir -p "$BIN_DIR" "$AGY_SKILLS_DIR" "$CLAUDE_SKILLS_DIR" "$HOME/.gemini"
-
-# 1. Make CLI scripts executable and link into ~/.local/bin
-chmod +x "$REPO_DIR/skills/codex-sol/bin/codex" "$REPO_DIR/skills/codex-sol/bin/ask-codex"
-ln -sfn "$REPO_DIR/skills/codex-sol/bin/codex" "$BIN_DIR/codex"
-ln -sfn "$REPO_DIR/skills/codex-sol/bin/ask-codex" "$BIN_DIR/ask-codex"
-ln -sfn "$REPO_DIR/skills/codex-sol/bin/ask-codex" "$BIN_DIR/ask-sol"
-ln -sfn "$REPO_DIR/skills/codex-sol/bin/ask-codex" "$BIN_DIR/ask-terra"
-
-# 2. Link all skills in skills/* to Antigravity and Claude Code
-for skill_path in "$REPO_DIR"/skills/*; do
-    if [ -d "$skill_path" ]; then
-        skill_name="$(basename "$skill_path")"
-        rm -rf "$AGY_SKILLS_DIR/$skill_name"
-        ln -sfn "$skill_path" "$AGY_SKILLS_DIR/$skill_name"
-        rm -rf "$CLAUDE_SKILLS_DIR/$skill_name"
-        ln -sfn "$skill_path" "$CLAUDE_SKILLS_DIR/$skill_name"
-        echo "Linked skill: $skill_name"
+link_if_available() {
+    local source="$1" target="$2"
+    if [ -L "$target" ] && [ "$(readlink "$target")" = "$source" ]; then
+        echo "Already linked: $target"
+    elif [ -e "$target" ] || [ -L "$target" ]; then
+        echo "Skipped existing path: $target" >&2
+    else
+        ln -s "$source" "$target"
+        echo "Linked: $target"
     fi
-done
-
-# 3. Ensure ~/.gemini/config/skills.json exists for Antigravity
-if [ ! -f "$AGY_SKILLS_JSON" ]; then
-    cat > "$AGY_SKILLS_JSON" << 'EOF'
-{
-  "entries": [
-    {
-      "path": "~/.gemini/config/skills"
-    }
-  ]
 }
-EOF
-fi
 
-# 4. Link global GEMINI.md rules
-if [ -f "$REPO_DIR/rules/GEMINI.md" ]; then
-    ln -sfn "$REPO_DIR/rules/GEMINI.md" "$HOME/.gemini/GEMINI.md"
-    echo "Linked global rules: ~/.gemini/GEMINI.md"
-fi
+remove_old_link() {
+    local target="$1" old_source="$2"
+    if [ -L "$target" ] && [ "$(readlink "$target")" = "$old_source" ]; then
+        rm "$target"
+        echo "Removed old link: $target"
+    fi
+}
 
-echo "Done! Public agent-skills installed successfully."
+mkdir -p "$HOME/.local/bin" "$HOME/.gemini/config/skills" "$HOME/.claude/skills"
+old_skill="$repo_dir/skills/codex-sol"
+for command in ask-codex ask-sol ask-terra; do
+    remove_old_link "$HOME/.local/bin/$command" "$old_skill/bin/ask-codex"
+done
+remove_old_link "$HOME/.local/bin/codex" "$old_skill/bin/codex"
+remove_old_link "$HOME/.gemini/config/skills/codex-sol" "$old_skill"
+remove_old_link "$HOME/.claude/skills/codex-sol" "$old_skill"
+remove_old_link "$HOME/.gemini/GEMINI.md" "$repo_dir/rules/GEMINI.md"
+chmod +x "$skill/bin/ask-codex"
+link_if_available "$skill/bin/ask-codex" "$HOME/.local/bin/ask-codex"
+link_if_available "$skill" "$HOME/.gemini/config/skills/ask-codex"
+link_if_available "$skill" "$HOME/.claude/skills/ask-codex"
+
+echo 'Make sure ~/.local/bin is in PATH and Codex CLI is authenticated.'

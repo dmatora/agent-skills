@@ -1,28 +1,14 @@
 **Languages:** **English** | [Русский](i18n/README.ru.md)
 
-# Agent Skills — Production Workflows for Senior AI Engineering
+# Agent Skills
 
-A curated collection of battle-tested agent skills, multi-model bridges, and architectural guardrails for **Antigravity**, **Claude Code**, and **Cursor**.
+A collection of skills and small tools from my work with AI coding agents. This repository is a work in progress.
 
-Built from real production troubleshooting across 270+ engineering projects, fintech/Web3 protocols, and high-leverage agentic workflows.
+## Skills
 
----
+[ask-codex](skills/ask-codex/README.md) lets an agent consult Codex CLI and assess its answer against the project context. It also provides a small command for selecting a model and sending non-interactive requests.
 
-## Included Skills
-
-### 1. [`codex-sol`](skills/codex-sol/README.md) — Codex Frontier Reasoning Bridge & Grounding Protocol
-Pairs your fast daily-driver IDE agent with OpenAI's heaviest reasoning models (`gpt-6.1-terra`, `gpt-6.1-sol`, `gpt-6-astra`) via the native CLI bundled inside macOS `ChatGPT.app`:
-* **Zero Copy-Paste:** Headless CLI bridge (`ask-codex`) using your existing desktop ChatGPT login.
-* **The "Spherical Cow" Filter:** Forces your primary agent to strip academic over-engineering and excessive hedging from the reasoning model before touching production code.
-* **Instant Model Switcher:** Live discovery (`ask-codex --models`) and fuzzy switching (`ask-codex --set terra`) directly from `~/.codex/models_cache.json`—no prompt rewrites when new models drop.
-
-👉 **[Read full documentation (EN)](skills/codex-sol/README.md)** · **[Документация на русском (RU)](skills/codex-sol/i18n/README.ru.md)**
-
----
-
-## 5-Second Installation (macOS / Linux)
-
-Clone the repository and run the idempotent installer to symlink all skills, CLI helpers, and global agent rules:
+## Installation
 
 ```bash
 git clone https://github.com/dmatora/agent-skills.git ~/Developer/agent-skills
@@ -30,13 +16,6 @@ cd ~/Developer/agent-skills
 ./install.sh
 ```
 
-What `./install.sh` sets up:
-1. Links `codex` and `ask-codex` (plus compatibility aliases `ask-sol`, `ask-terra`) into `~/.local/bin/`.
-2. Symlinks skills into `~/.gemini/config/skills/` (Antigravity) and `~/.claude/skills/` (Claude Code).
-3. Links global collaboration rules into `~/.gemini/GEMINI.md`.
+The installer links `ask-codex` into `~/.local/bin` and the skill into the Antigravity and Claude skill directories. It removes links from this repository's previous `codex-sol` installation; other existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the helper also checks for the Codex binary bundled with ChatGPT.app.
 
----
-
-## Custom Engineering & B2B Agent Systems
-
-These open-source skills represent the foundational architecture layer of my daily workflow. For custom multi-agent B2B pipelines, automated market intelligence, high-reliability scrapers, or rescue/troubleshooting of critical Web3 & fintech systems — reach out directly via GitHub or LinkedIn.
+See the [skill documentation](skills/ask-codex/README.md) for usage and limitations.
