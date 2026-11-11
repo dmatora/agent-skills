@@ -1,0 +1,3 @@
+interface:
+  display_name: "Codex Development Orchestrator"
+  short_description: "Orchestrates planning, implementation, review, and commits"

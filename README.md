@@ -6,7 +6,8 @@ A collection of skills and small tools from my work with AI coding agents. This 
 
 ## Skills
 
-[ask-codex](skills/ask-codex/README.md) lets an agent consult Codex CLI and assess its answer against the project context. It also provides a small command for selecting a model and sending non-interactive requests.
+- [Ask Codex](skills/ask-codex/README.md) lets an agent consult Codex CLI and assess its answer against the project context. It also provides a small command for selecting a model and sending non-interactive requests.
+- [Codex Development Orchestrator](skills/codex-dev-orchestrator/SKILL.md) coordinates coding tasks through GPT-6.1 Sol analysis and review, GPT-6 Luna implementation, and Codex task chats for multi-task work. [Russian version](skills/codex-dev-orchestrator/i18n/SKILL.ru.md).
 
 ## Installation
 
@@ -16,7 +17,7 @@ cd ~/Developer/agent-skills
 ./install.sh
 ```
 
-The installer links `ask-codex` into `~/.local/bin` and the skill into the Antigravity and Claude skill directories. Existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the helper also checks for the Codex binary bundled with ChatGPT.app.
+The installer links every skill under `skills/` that contains a `SKILL.md` into Codex. It also keeps Ask Codex installed in Antigravity and Claude. Executable helpers in each skill's `bin/` folder are linked into `~/.local/bin`. Set `CODEX_HOME` to use a non-default Codex home. Existing paths are left untouched and reported. Ensure `~/.local/bin` is in your `PATH`, and set up and authenticate Codex CLI separately. On macOS, the Ask Codex helper also checks for the Codex binary bundled with ChatGPT.app.
 
 ## Quick start
 

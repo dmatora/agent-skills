@@ -3,7 +3,10 @@
 set -euo pipefail
 
 repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-skill="$repo_dir/skills/ask-codex"
+skills_dir="$repo_dir/skills"
+codex_home="${CODEX_HOME:-$HOME/.codex}"
+codex_skill_root="$codex_home/skills"
+legacy_skill_roots=("$HOME/.gemini/config/skills" "$HOME/.claude/skills")
 
 link_if_available() {
     local source="$1" target="$2"
@@ -17,10 +20,32 @@ link_if_available() {
     fi
 }
 
-mkdir -p "$HOME/.local/bin" "$HOME/.gemini/config/skills" "$HOME/.claude/skills"
-chmod +x "$skill/bin/ask-codex"
-link_if_available "$skill/bin/ask-codex" "$HOME/.local/bin/ask-codex"
-link_if_available "$skill" "$HOME/.gemini/config/skills/ask-codex"
-link_if_available "$skill" "$HOME/.claude/skills/ask-codex"
+mkdir -p "$HOME/.local/bin"
+mkdir -p "$codex_skill_root"
+for skill_root in "${legacy_skill_roots[@]}"; do
+    mkdir -p "$skill_root"
+done
 
-echo 'Make sure ~/.local/bin is in PATH and Codex CLI is authenticated.'
+for skill_dir in "$skills_dir"/*; do
+    [ -d "$skill_dir" ] || continue
+    [ -f "$skill_dir/SKILL.md" ] || continue
+
+    skill_name="$(basename "$skill_dir")"
+    link_if_available "$skill_dir" "$codex_skill_root/$skill_name"
+
+    if [ "$skill_name" = "ask-codex" ]; then
+        for skill_root in "${legacy_skill_roots[@]}"; do
+            link_if_available "$skill_dir" "$skill_root/$skill_name"
+        done
+    fi
+
+    if [ -d "$skill_dir/bin" ]; then
+        for command_file in "$skill_dir/bin"/*; do
+            [ -f "$command_file" ] && [ -x "$command_file" ] || continue
+            command_name="$(basename "$command_file")"
+            link_if_available "$command_file" "$HOME/.local/bin/$command_name"
+        done
+    fi
+done
+
+echo 'Make sure ~/.local/bin is in PATH and authenticate Codex CLI if you use Ask Codex.'
